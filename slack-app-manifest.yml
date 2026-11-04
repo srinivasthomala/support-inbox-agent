@@ -1,0 +1,21 @@
+# Create the Slack app from this manifest: api.slack.com/apps -> Create New App -> From a manifest.
+# Replace the request_url host with your deployed app (fly.dev) before creating it.
+display_information:
+  name: Brewline Support Agent
+  description: Escalations and refund approvals from the support inbox agent
+  background_color: "#0b1124"
+features:
+  bot_user:
+    display_name: Support Agent
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+settings:
+  interactivity:
+    is_enabled: true
+    request_url: https://brewline-support-agent.fly.dev/slack/actions
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
