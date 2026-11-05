@@ -22,4 +22,4 @@ primary_region = "iad"
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "256mb"
+  memory = "512mb"  # 256 MB OOMs once the Google API clients load
