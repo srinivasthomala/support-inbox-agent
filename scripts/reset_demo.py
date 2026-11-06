@@ -1,6 +1,7 @@
 """Reset the demo before a recording.
 
-    python scripts/reset_demo.py
+    python scripts/reset_demo.py              # orders + sheet
+    python scripts/reset_demo.py --orders-only  # leave the sheet alone (re-take one scene)
 
 - Orders go back to their starting state (no refunds, fresh dates), so Leo's
   order is refundable again and Sam's is still outside the window.
@@ -45,7 +46,7 @@ db.commit()
 db.close()
 print(f"Orders reset ({expired} pending approval(s) expired).")
 
-if s.sheet_id:
+if s.sheet_id and "--orders-only" not in sys.argv:
     sheets = build("sheets", "v4", credentials=credentials(s), cache_discovery=False).spreadsheets()
     meta = sheets.get(spreadsheetId=s.sheet_id).execute()
     first = meta["sheets"][0]["properties"]["title"]
