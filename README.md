@@ -4,6 +4,12 @@ An AI agent that runs a store's support inbox on its own. A customer emails; sec
 
 Built with **Python, FastAPI, Claude (tool use), Gmail API, Google Sheets API and Slack**, deployed on Fly.io. The store, **Brewline Coffee Co.**, and its customers are fictional demo data.
 
+Live at [brewline-support-agent.fly.dev](https://brewline-support-agent.fly.dev) (the agent itself works on the store's Gmail inbox; the site is just its home page).
+
+| A routine question, answered in the thread | A refund, waiting for one click in Slack |
+| --- | --- |
+| ![Agent reply with the tracking number](docs/gmail-reply.png) | ![Slack approval with the order items and the refunded one marked](docs/slack-approval.png) |
+
 ```mermaid
 flowchart LR
     G["Gmail inbox"] -->|"poll every 20 s"| P["Pipeline"]
