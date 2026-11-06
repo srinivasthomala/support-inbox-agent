@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.approvals import request_text
 from app.config import Settings
 from app.db import Customer, Order, ProcessedEmail, RefundApproval, utcnow
 from app.integrations.base import Email, Services
@@ -313,9 +314,8 @@ class Toolbox:
         self.db.commit()
         approval.slack_ts = self.services.notifier.post_approval(
             approval.id,
-            f"*Refund request* ${approval.amount:.2f} on {order.id} (total ${order.total:.2f})\n"
-            f"From: {self.email.sender_name} <{self.email.sender_email}>\n"
-            f"Subject: {self.email.subject}\nReason: {args.reason}",
+            request_text(order, approval.amount, args.reason,
+                         f"{self.email.sender_name} <{self.email.sender_email}>", self.email.subject),
         )
         self.db.commit()
         self.services.inbox.send_reply(
