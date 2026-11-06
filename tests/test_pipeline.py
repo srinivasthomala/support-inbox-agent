@@ -75,8 +75,7 @@ def test_refund_waits_for_human_approval_then_applies_once(db, services, setting
     assert approval.status == "pending" and services.notifier.approvals[0][0] == approval.id
     # The approver sees the order's items, with the refunded one ($17 espresso) marked.
     slack_text = services.notifier.approvals[0][1]
-    assert "espresso 340g: $17.00   :arrow_left:" in slack_text and "dripper: $28.00
-" in slack_text
+    assert "espresso 340g: $17.00   :arrow_left:" in slack_text and "dripper: $28.00\n" in slack_text
     assert len(services.inbox.sent) == 1 and "reviewing" in services.inbox.sent[0]["body"]
     assert db.get(Order, "BRW-1038").refunded_amount == 0  # nothing applied yet
 
