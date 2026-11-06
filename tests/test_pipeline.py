@@ -111,24 +111,42 @@ def test_refund_amount_is_checked_in_code(db, services, settings):
     assert db.query(RefundApproval).count() == 0 and rec.outcome == "escalated"
 
 
-def test_refund_outside_window_is_refused(db, services, settings):
-    email = make_email(sender="sam.demo@example.com", name="Sam Okafor", subject="Refund",
-                       body="I want a refund for BRW-0911, I didn't like it.")
+def _sam_email():
+    return make_email(sender="sam.demo@example.com", name="Sam Okafor", subject="Refund",
+                      body="I want a refund for BRW-0911, I didn't like it.")
+
+
+def test_refund_outside_window_is_declined_automatically(db, services, settings):
     rec, client = run(
-        db, services, settings, email,
+        db, services, settings, _sam_email(),
         reply("tool_use", tool_use("request_refund_approval", {**REFUND_ARGS, "order_id": "BRW-0911", "amount": 42.0})),
         reply("tool_use", tool_use("send_reply", {
-            "category": "refund_request", "order_id": "BRW-0911", "body": "Hi Sam, that's outside our window."})),
-        reply("tool_use", tool_use("send_reply", {
-            "category": "other", "order_id": "BRW-0911",
+            "category": "refund_request", "order_id": "BRW-0911",
             "body": "Hi Sam, refunds are available within 30 days of delivery. Brewline Support"})),
         reply("end_turn", text("ok")),
     )
-    msgs = client.requests
-    assert "outside the refund window" in msgs[1]["messages"][-1]["content"][0]["content"]
-    # Replying with category refund_request is refused too: refunds need approval.
-    assert "use request_refund_approval" in msgs[2]["messages"][-1]["content"][0]["content"]
-    assert rec.outcome == "replied" and db.query(RefundApproval).count() == 0
+    assert "outside the refund window" in client.requests[1]["messages"][-1]["content"][0]["content"]
+    assert rec.outcome == "replied" and rec.category == "refund_request" and rec.order_id == "BRW-0911"
+    assert "30 days" in services.inbox.sent[0]["body"]
+    assert db.query(RefundApproval).count() == 0
+
+
+def test_eligible_refund_cannot_be_declined_by_reply(db, services, settings):
+    # Leo's order is refundable: a plain reply (with or without an order id) is refused.
+    rec, client = run(
+        db, services, settings, _refund_email(),
+        reply("tool_use", tool_use("send_reply", {
+            "category": "refund_request", "order_id": "BRW-1038", "body": "Sorry Leo, no refunds."})),
+        reply("tool_use", tool_use("send_reply", {
+            "category": "refund_request", "order_id": None, "body": "Sorry Leo, no refunds."})),
+        reply("tool_use", tool_use("request_refund_approval", REFUND_ARGS)),
+        reply("end_turn", text("ok")),
+    )
+    for i in (1, 2):
+        err = client.requests[i]["messages"][-1]["content"][0]
+        assert err["is_error"] and "needs approval" in err["content"]
+    assert rec.outcome == "approval_requested"
+    assert len(services.inbox.sent) == 1 and "reviewing" in services.inbox.sent[0]["body"]
 
 
 def test_only_one_final_action(db, services, settings):

@@ -64,8 +64,10 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "name": "send_reply",
         "description": (
             "FINAL ACTION. Send a reply to the customer in this email thread. Use it for questions "
-            "you can fully answer from order data and policies. Not for refunds (use "
-            "request_refund_approval) or complaints that need a person (use escalate_to_human)."
+            "you can fully answer from order data and policies. For refund requests, only to decline "
+            "one the checks show is not eligible (category refund_request with that order_id); "
+            "eligible refunds go through request_refund_approval. Not for complaints that need a "
+            "person (use escalate_to_human)."
         ),
         "strict": True,
         "input_schema": {
@@ -239,6 +241,18 @@ class Toolbox:
             "already_refunded": o.refunded_amount,
         }
 
+    def _refund_blocker(self, o: Order) -> str | None:
+        """Why this order can't be refunded, or None if it can."""
+        if o.status != "delivered":
+            return f"Order {o.id} is '{o.status}', not delivered; refunds apply to delivered orders."
+        window = timedelta(days=self.settings.refund_window_days)
+        if o.delivered_at is None or utcnow() - _aware(o.delivered_at) > window:
+            return (f"Order {o.id} was delivered more than {self.settings.refund_window_days} days ago, "
+                    "outside the refund window.")
+        if o.total - o.refunded_amount <= 0:
+            return f"Order {o.id} has already been fully refunded."
+        return None
+
     # -- read tools ----------------------------------------------------------------
     def _lookup_orders(self, args: _OrderQ) -> dict:
         if args.order_id:
@@ -257,10 +271,16 @@ class Toolbox:
     # -- final actions ---------------------------------------------------------------
     def _send_reply(self, args: _Reply) -> dict:
         self._require_open()
+        order = self._own_order(args.order_id) if args.order_id else None
         if args.category == "refund_request":
-            raise ToolError("Refunds need approval: use request_refund_approval (or escalate_to_human).")
-        if args.order_id:
-            self._own_order(args.order_id)
+            # Declining is allowed only when the code itself finds the order ineligible;
+            # anything that could be refunded must go to a person for approval.
+            if order is None or self._refund_blocker(order) is None:
+                raise ToolError(
+                    "This refund may be eligible, so it needs approval: use request_refund_approval "
+                    "(or escalate_to_human). Replies on refund requests are only for declining an "
+                    "order_id that fails the refund checks."
+                )
         self.services.inbox.send_reply(
             to=self.email.sender_email,
             subject=_reply_subject(self.email.subject),
@@ -275,13 +295,11 @@ class Toolbox:
     def _request_refund(self, args: _Refund) -> dict:
         self._require_open()
         order = self._own_order(args.order_id)
-        if order.status != "delivered":
-            raise ToolError(f"Order {order.id} is '{order.status}', not delivered; refunds apply to delivered orders.")
-        window = timedelta(days=self.settings.refund_window_days)
-        if order.delivered_at is None or utcnow() - _aware(order.delivered_at) > window:
+        blocker = self._refund_blocker(order)
+        if blocker:
             raise ToolError(
-                f"Order {order.id} was delivered more than {self.settings.refund_window_days} days ago, "
-                "outside the refund window. Explain the policy kindly, or escalate if there is a good reason."
+                f"{blocker} Decline kindly with send_reply (category refund_request, order_id "
+                f"{order.id}), quoting the policy, or escalate if there is a good reason."
             )
         remaining = round(order.total - order.refunded_amount, 2)
         if not 0 < args.amount <= remaining:

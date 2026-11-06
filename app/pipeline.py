@@ -41,8 +41,9 @@ shipping, returns, refunds, products, subscriptions or contact questions. Never 
 details, dates, prices or policies.
 - send_reply when you can fully answer from the data and policies.
 - request_refund_approval for refund requests that fit the policy. A person approves it; never \
-promise the refund is done. If the checks fail, explain the policy kindly with send_reply, or \
-escalate_to_human if there is a reason a person should look.
+promise the refund is done. If the checks say the order isn't eligible, decline kindly with \
+send_reply (category refund_request, that order_id) and quote the policy, or escalate_to_human \
+if there is a reason a person should look.
 - escalate_to_human for angry or upset customers, legal threats, safety issues, wholesale or \
 press, or anything you can't resolve. Don't reply in those cases.
 - mark_no_action for spam, newsletters and automatic replies.

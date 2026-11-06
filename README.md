@@ -21,7 +21,7 @@ flowchart LR
 | Email | Action |
 | --- | --- |
 | "Where is my order?", shipping, product and subscription questions | Looks up the order and the store policy, replies in the thread |
-| Refund requests | Checks eligibility in code, sends a holding reply, posts **Approve / Reject** buttons to Slack. On approve: refunds the order and emails the customer |
+| Refund requests | Checks eligibility in code. Eligible: sends a holding reply and posts **Approve / Reject** buttons to Slack; on approve, refunds the order and emails the customer. Not eligible (e.g. past 30 days): replies kindly with the policy |
 | Complaints, legal threats, anything unclear | Escalates to Slack with a summary. No reply is sent |
 | Spam, newsletters, auto-replies | Ignored without calling the model |
 
@@ -44,7 +44,7 @@ The agent loop is hand-written (`app/agent/loop.py`): it handles every `stop_rea
 
 ## Tests
 
-19 tests drive the whole pipeline with fake Gmail, Sheets, Slack and a scripted fake Claude client, at no API cost:
+20 tests drive the whole pipeline with fake Gmail, Sheets, Slack and a scripted fake Claude client, at no API cost:
 
 ```bash
 python -m venv venv && venv/Scripts/pip install -r requirements-dev.txt
