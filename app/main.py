@@ -16,6 +16,7 @@ from app.approvals import decide
 from app.config import get_settings
 from app.db import init_db, session
 from app.integrations.base import Services
+from app import pages
 from app.pipeline import process_inbox
 from app.store import seed
 
@@ -82,6 +83,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Support Inbox Agent", lifespan=lifespan)
+app.include_router(pages.router)
 
 
 @app.get("/health")
